@@ -1,0 +1,285 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title></title>
+		<link rel="stylesheet" href="http://code.jquery.com/qunit/qunit-1.18.0.css">
+	
+	</head>
+	<body>
+
+		<div id="qunit"></div>
+		<div id="qunit-fixture"></div>
+		<script src="http://code.jquery.com/qunit/qunit-1.18.0.js"></script>
+		<script src="treeish.js"></script>
+		<script>
+
+
+			QUnit.test("executable", function(assert){
+				function todo(){
+					var i=0,l=arguments.length,res=[];
+					for(;i<l;i++) res.push(arguments[i]);
+					return res;
+				}
+				var exe1 = executable(todo, "a","b","c");
+				var exe2 = executable(todo, 1,2,3);
+				var exe3 = executable(todo, true);
+				
+				assert.deepEqual(exe3(), [true], "exe 3");
+				assert.deepEqual(exe2(), [1,2,3], "exe 2");
+				assert.deepEqual(exe1(), ["a","b","c"], "exe 1");
+			});
+			
+
+			QUnit.test("unescape", function( assert ) {
+				var tests=[
+					["aaa","aaa"],
+					["@aaa","aaa"],
+					["aaa@","aaa"],
+					["aa@a","aaa"],
+					["aa@@a","aa@a"],
+					["@",""],
+					["@@","@"],
+					["@@@","@"],
+				];
+				var esc="@";
+				var i=0;
+				for(;i<tests.length;i++){
+					assert.strictEqual(unescape(tests[i][0], esc), tests[i][1], tests[i][0] + " -> "+ tests[i][1]);
+				}
+				
+			});
+			QUnit.test("indexAndLengthOf", function(assert){
+				var tests = [
+					[ "tested string", "token", {index:-1,length:0, match:null} ],
+					[ "tested string", "ted", {index:3,length:3, match:"ted"} ],
+					[ "tested string", /s[^s]*/, {index:2,length:5, match:"sted "} ],
+					[ "tested string", /foobar/, {index:-1,length:0, match:null} ],
+					[ "tested string", function(){return "ted";}, {index:3,length:3, match:"ted"} ],
+					[ "tested string", function(){return (/s[^s]*/); }, {index:2,length:5, match:"sted "} ],
+				];
+				
+				var i=0;
+				for(;i<tests.length;i++){
+					assert.strictEqual(indexAndLengthOf(tests[i][0], tests[i][1]).length, tests[i][2].length, tests[i][1] + " length" );
+					assert.strictEqual(indexAndLengthOf(tests[i][0], tests[i][1]).index, tests[i][2].index, tests[i][1] + " index");
+					assert.strictEqual(indexAndLengthOf(tests[i][0], tests[i][1]).match, tests[i][2].match, tests[i][1] + " match");
+				}
+			
+			});
+			
+			
+			QUnit.test("allIndexesAndLengthOf", function(assert){
+				var tests = [
+					[ "repeating repeated repeats", "pea", {indexes:[2, 12, 21],lengths:[3,3,3], matches:["pea","pea","pea"]} ],
+					[ "repeating repeated repeats", "foobar", {indexes:[],lengths:[], matches:[]} ],
+					[ "repeating repeated repeats", /t\S+/, {indexes:[5, 15, 24],lengths:[4,3,2], matches:["ting","ted","ts"]} ],
+					[ "repeating repeated repeats", /t\S+/gim, {indexes:[5, 15, 24],lengths:[4,3,2], matches:["ting","ted","ts"]} ],
+					[ "repeating repeated repeats", /again$/, {indexes:[],lengths:[], matches:[]} ],
+					[ "repeating repeated repeats", /again$/gim, {indexes:[],lengths:[], matches:[]} ],
+					[ "repeating repeated repeats", function(){ return "pea"}, {indexes:[2, 12, 21],lengths:[3,3,3], matches:["pea","pea","pea"]} ],
+					[ "repeating repeated repeats", function(){ return (/t\S+/)}, {indexes:[5, 15, 24],lengths:[4,3,2], matches:["ting","ted","ts"]} ],
+					
+				];
+				
+				var i=0;
+				for(;i<tests.length;i++){
+					assert.deepEqual(allIndexesAndLengthOf(tests[i][0], tests[i][1]).lengths, tests[i][2].lengths, tests[i][1] + " lengths" );
+					assert.deepEqual(allIndexesAndLengthOf(tests[i][0], tests[i][1]).indexes, tests[i][2].indexes, tests[i][1] + " indexes");
+					assert.deepEqual(allIndexesAndLengthOf(tests[i][0], tests[i][1]).matches, tests[i][2].matches, tests[i][1] + " matches");
+				}
+			
+			});
+
+			
+			
+			QUnit.test("findNotEscaped", function(assert){
+				var tests = [
+					["abc(def", 	3],
+					["abcdef", 		-1],
+					["abc\\(def", 	-1],
+					["abc\\(de(f", 	7],
+					["abc\\\\(de(f", 	5],
+					["abc\\\\\\(de(f", 	9],
+					["abc(de\\(", 	3],
+					["abc\\de(f", 	6],
+				];
+				var i=0;
+				for(;i<tests.length;i++){
+					assert.strictEqual(findNotEscaped(tests[i][0], "(", "\\").index, tests[i][1], tests[i][0] + " -> "+ tests[i][1]);
+				}
+				
+			});
+			
+		
+			QUnit.test("dual ok", function( assert ) {
+				var o="(",
+					c=")",
+					e="\\",
+					s={
+						"" : ["", "", ""],
+						"()" : ["", "", ""],
+						"(a)" : ["", "a", ""],
+						"a(b)c" : ["a", "b", "c"],
+						"a(b)))" : ["a", "b", "))"],
+						"(a))" : ["", "a", ")"],
+						"(a\\))" : ["", "a\\)", ""],
+						
+					},
+					k;
+				for(k in s){
+					assert.deepEqual(dual(k,o,c,e), s[k], "dual for " + k);
+				}
+				
+				function open(){
+					return /[37]/;
+				}
+				
+				function close(str, open_match, open, escape){
+					var res = (parseInt(open_match.match)+1)+"";
+					return res;
+				} 
+				var s2 = {
+					"aa3bb4cc" : ["aa","bb","cc"],	
+					"a7b8c" : ["a","b","c"],	
+					"a2b48c" : ["a2b48c","",""],	
+				}
+				for(k in s2){
+					assert.deepEqual(dual(k,open,close,e), s2[k], "dual callback for " + k);
+				}
+				
+			});
+			QUnit.test("dual ko", function( assert ) {
+				var o="(",
+					c=")",
+					e="\\",
+					s=[
+						"(",
+						"(\\)",
+						"(\\\\\\)",
+						")",
+						"((a)",
+						")(a)",
+					],
+					i=0,
+					l=s.length;
+				
+				for(;i<l;i++){
+					assert.throws( function(){
+						dual(s[i],o,c,e);
+					}, /malformed/i , "throwing for " + s[i]);
+				}
+			});
+			QUnit.test("parsing ok string", function( assert ) {
+				var o="(",
+					c=")",
+					e="\\",
+					s={
+						"" : [],
+						"a" : ["a"],
+						"a(b)" : ["a", ["b"]],
+						"a(b)c" : ["a", ["b"], "c"],
+						"a(\\(b)c" : ["a", ["(b"], "c"],
+						"a((b))(c)" : ["a", [["b"]], [ "c"]],
+					},
+					k;
+				for(k in s){
+					assert.deepEqual(tree(k,o,c,e), s[k], "parsing for " + k);
+				}
+			});
+
+			
+			QUnit.test("rebuilding ok string", function( assert ) {
+				var o="(",
+					c=")",
+					e="\\",
+					s={
+						"" : [],
+						"a" : ["a"],
+						"a(b)" : ["a", ["b"]],
+						"a(b)c" : ["a", ["b"], "c"],
+						"a((b))(c)" : ["a", [["b"]], [ "c"]],
+					},
+					k;
+				for(k in s){
+					assert.strictEqual(tree_join(tree(k,o,c,e),o,c,e), k, "rebuilding for " + k);
+				}
+			});
+			
+			QUnit.test("translating ok string", function( assert ) {
+				var o="(",
+					c=")",
+					o2="[",
+					c2="]",
+					e="\\",
+					e2="@",
+					s={
+						"" : "",
+						"a" : "a",
+						"a(b)" : "a[b]",
+						"a(b)c" : "a[b]c",
+						"a(\\(b)c" : "a[(b]c",
+						"a([b)c" : "a[@[b]c",
+						"a((b))(c)" : "a[[b]][c]",
+					},
+					k;
+				for(k in s){
+					assert.strictEqual(tree_join(tree(k,o,c,e),o2,c2,e2), s[k], "rebuilding for " + k);
+				}
+			});			
+			
+			QUnit.test("parsing ko string", function( assert ) {
+				var o="(",
+					c=")",
+					e="\\",
+					s=[
+						"(",
+						")",
+						"(\\)",
+						"\\()",
+						"(()",
+						")()",
+						"())",
+						"()(",
+					],
+					i=0,
+					l=s.length;
+				
+				for(;i<l;i++){
+					assert.throws( function(){
+						tree(s[i],o,c,e);
+					}, /malformed/i , "throwing for " + s[i]);
+				}
+			});
+			
+					QUnit.test("parsing ok html", function( assert ) {
+				var o = /<([^>\/][^>]*[^\/>]|[^\/>])>/,
+					c = function(str,match,token){
+					  if(!match) debugger;
+					  var tag = match.match.substring(1,match.match.length-1);
+					  var i = tag.indexOf(" ");
+					  if(i!=-1)tag = tag.substring(0, i);
+					  var res = new RegExp("<\\/"+tag+"\\s*>");
+					  return res;
+					},
+					e = "\\",
+					tests = {
+						"": [], 
+						"baz": ["baz"], 
+						"<span>baz</span>": [["baz"]],
+						"<img src='foobar.jpg' />" : ["<img src='foobar.jpg' />"], 
+						"<p><a href=''>foo</a> bar <img src=''/> baz</p>":
+							[[["foo"], " bar <img src=''/> baz"]]
+						
+					},
+					t=null;
+
+				for(t in tests){
+					assert.deepEqual(tree(t,o,c,e), tests[t], "parsting " + t)
+				}
+
+			});
+	
+		</script>
+	</body>
+</html>
