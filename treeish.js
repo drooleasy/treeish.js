@@ -79,8 +79,7 @@ function findNotEscaped(str, token, escape, start){
 		pos,
 		posAfter,
 		escaped;
-	
-	
+		
 	for(;i_token<l_token;i_token++){	
 		pos = token_matches.indexes[i_token];
 		escaped = false;
@@ -146,6 +145,17 @@ function executable(f){
 		return f.apply(null, args);
 	}
 }
+
+function findAllNotEscaped(str, token, escape){
+	var all = [],
+		find = findNotEscaped(str, token, escape);
+	while(find.index != -1){
+		all.push(find);
+		find = findNotEscaped(str, token, escape, find.index+find.length);
+	}
+	return all; 
+}
+
 
 
 
