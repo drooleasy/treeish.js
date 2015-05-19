@@ -191,7 +191,9 @@ function dual(str, open, close, escape){
 				if(count==0){
 					return [
 						str.substring(0, openeds[0].index),
+						opened.match,
 						str.substring(openeds[0].index+openeds[0].length, closed.index),
+						closed.match,
 						str.substring(closed.index + closed.length),
 					];
 				}
@@ -200,7 +202,7 @@ function dual(str, open, close, escape){
 		
 	}
 	if(count!=0) throw new Error("Malformed : openeds count=" + count )
-	return [str, "", ""];
+	return [str, "", "", "", ""];
 	
 }
 function unescape(str, escape){
@@ -225,38 +227,40 @@ function unescape(str, escape){
 	
 }
 
+function default_build_node(opener_or_content, closer){
+	if(!closer) return opener_or_content
+	else return [];
+}
 
-function tree(str, open, close, escape){
+function default_add_child(parent, child){
+	parent.push(child);
+}
+
+function tree(str, open, close, escape, parent, build_node, add_child){
+	add_child = add_child || default_add_child;
+	build_node = build_node || default_build_node;
 	var arr = dual(str, open, close, escape),
 		prefix = arr[0],
-		subtree = arr[1],
-		unprocessed = arr[2];
+		opener = arr[1],
+		subtree = arr[2],
+		closer = arr[3],
+		unprocessed = arr[4];
 
-	if(subtree !== "") subtree = tree(subtree, open, close, escape);
-	if(unprocessed !== "") unprocessed = tree(unprocessed, open, close, escape);
 
-    var res = [];
-    
-    
     if(prefix !== ""){
-		res.push(unescape(prefix, escape));
+		var leaf = build_node(unescape(prefix, escape));
+		add_child(parent, leaf);
 	}
-    if(subtree !== "") res.push(subtree);
-    if(unprocessed !== ""){
-		var i=0;
-		for(;i<3;i++){
-			if(i== 0 
-				&& typeof unprocessed[i] == "string" 
-				&& !(close instanceof Function) 
-				&& findNotEscaped(unprocessed[i], close, escape)>-1){ 
-				throw new Error("Malformed trailing closed");
-			}
-			if(unprocessed[i]){ 
-				res.push(unprocessed[i]);
-			}
-		}
+	
+	if(closer){
+		var child = build_node(opener, closer);
+		add_child(parent, child);
 	}
-	return res;
+	
+	if(subtree !== "") tree(subtree, open, close, escape, child, build_node, add_child);
+	
+	if(unprocessed !== "") tree(unprocessed, open, close, escape, parent, build_node, add_child);
+
 }
 
 function tree_join(t, open, close, escape){

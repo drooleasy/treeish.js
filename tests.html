@@ -117,13 +117,13 @@
 					c=")",
 					e="\\",
 					s={
-						"" : ["", "", ""],
-						"()" : ["", "", ""],
-						"(a)" : ["", "a", ""],
-						"a(b)c" : ["a", "b", "c"],
-						"a(b)))" : ["a", "b", "))"],
-						"(a))" : ["", "a", ")"],
-						"(a\\))" : ["", "a\\)", ""],
+						"" : ["", "", "", "", ""],
+						"()" : ["", "(", "", ")", ""],
+						"(a)" : ["", "(", "a", ")", ""],
+						"a(b)c" : ["a", "(", "b", ")", "c"],
+						"a(b)))" : ["a", "(", "b", ")", "))"],
+						"(a))" : ["", "(", "a", ")", ")"],
+						"(a\\))" : ["", "(", "a\\)", ")", ""],
 						
 					},
 					k;
@@ -140,9 +140,9 @@
 					return res;
 				} 
 				var s2 = {
-					"aa3bb4cc" : ["aa","bb","cc"],	
-					"a7b8c" : ["a","b","c"],	
-					"a2b48c" : ["a2b48c","",""],	
+					"aa3bb4cc" : ["aa","3", "bb", "4","cc"],	
+					"a7b8c" : ["a","7", "b", "8","c"],	
+					"a2b48c" : ["a2b48c","","","",""],	
 				}
 				for(k in s2){
 					assert.deepEqual(dual(k,open,close,e), s2[k], "dual callback for " + k);
@@ -184,7 +184,9 @@
 					},
 					k;
 				for(k in s){
-					assert.deepEqual(tree(k,o,c,e), s[k], "parsing for " + k);
+					var res = [];
+					tree(k,o,c,e,res);
+					assert.deepEqual(res, s[k], "parsing for " + k);
 				}
 			});
 
@@ -202,7 +204,9 @@
 					},
 					k;
 				for(k in s){
-					assert.strictEqual(tree_join(tree(k,o,c,e),o,c,e), k, "rebuilding for " + k);
+					var res = [];
+					tree(k,o,c,e, res);
+					assert.strictEqual(tree_join(res,o,c,e), k, "rebuilding for " + k);
 				}
 			});
 			
@@ -224,7 +228,9 @@
 					},
 					k;
 				for(k in s){
-					assert.strictEqual(tree_join(tree(k,o,c,e),o2,c2,e2), s[k], "rebuilding for " + k);
+					var res = [];
+					tree(k,o,c,e, res);
+					assert.strictEqual(tree_join(res,o2,c2,e2), s[k], "rebuilding for " + k);
 				}
 			});			
 			
@@ -247,12 +253,12 @@
 				
 				for(;i<l;i++){
 					assert.throws( function(){
-						tree(s[i],o,c,e);
+						tree(s[i],o,c,e, []);
 					}, /malformed/i , "throwing for " + s[i]);
 				}
 			});
 			
-					QUnit.test("parsing ok html", function( assert ) {
+			QUnit.test("parsing ok html", function( assert ) {
 				var o = /<([^>\/][^>]*[^\/>]|[^\/>])>/,
 					c = function(str,match,token){
 					  if(!match) debugger;
@@ -275,7 +281,9 @@
 					t=null;
 
 				for(t in tests){
-					assert.deepEqual(tree(t,o,c,e), tests[t], "parsting " + t)
+					var res = [];
+					tree(t,o,c,e, res);
+					assert.deepEqual(res, tests[t], "parsting " + t)
 				}
 
 			});
